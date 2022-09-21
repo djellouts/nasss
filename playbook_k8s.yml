@@ -1,0 +1,113 @@
+---
+- hosts: [k8s]
+  become: true
+  tasks:
+  - name: Install dependencies for Docker
+    yum:
+      name: yum-utils
+      state: present
+
+  - name: Add Docker repository
+    command: yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+
+  - name: Install Docker
+    yum:
+      name: "{{ packages }}"
+      state: present
+    vars:
+      packages:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+
+  - name: Start & enable Docker service
+    ansible.builtin.service:
+      name: docker
+      state: started
+      enabled: yes
+
+  - name: Change cgroupfs to systemd
+    ansible.builtin.copy:
+      src: files/dockerdaemon.json
+      dest: /etc/docker/daemon.json
+
+  - name: Restart docker
+    ansible.builtin.service:
+      name: docker
+      state: restarted
+  - name: Remove swapfile from /etc/fstab
+    mount:
+      name: "{{ item }}"
+      fstype: swap
+      state: absent
+    with_items:
+      - swap
+      - none
+
+  - name: Disable swap
+    command: swapoff -a
+    when: ansible_swaptotal_mb > 0
+
+  - name: Disable IPtables
+    command: iptables -F
+
+  - name: Disable SELinux
+    command: setenforce 0
+
+  - name: Add YUM repository for Kubernetes
+    ansible.builtin.copy:
+      src: kubernetes.repo
+      dest: /etc/yum.repos.d/kubernetes.repo
+
+  - name: Install Kubernetes
+    yum:
+      name: "{{ packages }}"
+      state: present
+      update_cache: yes
+    vars:
+      packages:
+        - kubelet-1.21.1-0
+        - kubeadm-1.21.1-0
+        - kubectl-1.21.1-0
+
+  - name: Restart kubelet
+    service:
+      name: kubelet
+      daemon_reload: yes
+      state: restarted
+  - name: Initialize the Kubernetes cluster using kubeadm command
+    when: inventory_hostname in groups['k8s_master']
+    command: kubeadm init --apiserver-advertise-address="192.168.60.20" --pod-network-cidr=10.244.0.0/16
+    tags:
+    - k8s_init
+
+  - name: Set up Kubernetes for vagrant user
+    command: "{{ item }}"
+    when: inventory_hostname in groups['k8s_master']
+    with_items:
+    - mkdir -p /home/vagrant/.kube
+    - cp -i /etc/kubernetes/admin.conf /home/vagrant/.kube/config
+    - chown vagrant:vagrant /home/vagrant/.kube/config
+    tags:
+    - k8s_init
+
+  - name: Install Flannel pod network
+    become: false
+    when: inventory_hostname in groups['k8s_master']
+    command: kubectl apply -f https://github.com/coreos/flannel/raw/master/Documentation/kube-flannel.yml
+    tags:
+    - k8s_getjoin
+  - name: Retrieve Kubernetes join command that is used to join worker node(s)
+    become: false
+    when: inventory_hostname in groups['k8s_master']
+    command: kubeadm token create --print-join-command
+    register: join_command
+    tags:
+    - k8s_getjoin
+
+  - name: Copy Join Command to ansible server for debug purpose
+    delegate_to: localhost
+    when: inventory_hostname in groups['k8s_master']
+    copy:  content='{{ join_command.stdout_lines[0] }}' dest=files/kubeadm-join.sh mode=0777
+    tags:
+    - k8s_getjoin

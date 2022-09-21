@@ -1,0 +1,45 @@
+---
+- name: install Docker
+  block:
+    - name: set mydistribution
+      set_fact:
+        mydistribution: "{{ 'rhel' if (ansible_distribution == 'Red Hat Enterprise Linux') else (ansible_distribution | lower) }}"
+
+    - name: Add signing key
+      rpm_key:
+        key: "https://download.docker.com/linux/{{ mydistribution }}/gpg"
+        state: present
+
+    - name: Add repository into repo.d list
+      yum_repository:
+        name: docker
+        description: docker repository
+        baseurl: "https://download.docker.com/linux/{{ mydistribution }}/$releasever/$basearch/stable"
+        enabled: true
+        gpgcheck: true
+        gpgkey: "https://download.docker.com/linux/{{ mydistribution }}/gpg"
+
+    - name: Install Docker
+      yum:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: latest
+        update_cache: true
+
+    - name: Start Docker
+      service:
+        name: "docker"
+        enabled: true
+        state: started
+    - name: ajouter docker user
+      user:
+        name: dockeruser
+        group: docker
+        append: yes
+    - name: ajouter vagrant au groupe docker
+      user: 
+        name: vagrant
+        group: docker
+        append: yes

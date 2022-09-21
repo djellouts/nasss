@@ -1,0 +1,22 @@
+- hosts: ci
+  become: yes
+  tasks: 
+  - name: get artifactory repo
+    get_url:
+      url: https://bintray.com/jfrog/artifactory-rpms/rpm
+      dest: /etc/yum.repos.d/bintray-jfrog-artifactory-rpms.repo
+      validate_certs: no
+  - name: install artifactory
+    yum:
+      name: jfrog-artifactory-oss
+      state: present
+  - name: ajouter profil artifactoty
+    copy: 
+      src: profile_artifactory
+      dest: /etc/profile.d    
+  - name: arctifactory runnug and enabled
+    systemd:
+      name: artifactory
+      state: started
+      enabled: yes
+      daemon_reload: yes

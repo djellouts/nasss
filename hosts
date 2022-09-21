@@ -1,0 +1,33 @@
+dev1 ansible_host=192.168.60.101 ansible_user=vagrant
+dev2 ansible_host=192.168.60.102 ansible_user=vagrant
+jenkins ansible_host=192.168.60.11 ansible_user=vagrant
+tomcat ansible_host=192.168.60.13 ansible_user=vagrant
+docker ansible_host=192.168.60.14 ansible_user=vagrant
+master ansible_host=192.168.60.20 ansible_user=vagrant
+worker ansible_host=192.168.60.30 ansible_user=vagrant
+
+[dev]
+dev1
+dev2
+
+[ci]
+jenkins
+
+[deploiement]
+tomcat
+ 
+#[container]
+#docker
+
+[staging]
+docker
+
+[k8s_master]
+master
+
+[k8s_worker]
+worker
+
+[k8s:children]
+k8s_master
+k8s_worker

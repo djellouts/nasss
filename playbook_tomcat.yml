@@ -1,0 +1,73 @@
+- hosts: deploiement
+  become: yes
+  tasks: 
+  - name: install maven from role
+    include_role:
+      name: maven-role
+    vars:
+      maven_version: 3.8.6
+  - name: installation de tomcat
+    block:
+    - name: tomcat user created
+      user:
+        name: tomcat
+        create_home: no
+        shell: /bin/false
+        state: present
+    - name: installer tomcat
+      unarchive:
+        src: https://dlcdn.apache.org/tomcat/tomcat-8/v8.5.82/bin/apache-tomcat-8.5.82.tar.gz
+        dest: /opt
+        validate_certs: no
+        remote_src: yes
+        owner: tomcat
+        group: tomcat
+    - name: creer lien symb tomcat
+      file:
+        src: /opt/apache-tomcat-8.5.82
+        dest: /opt/tomcat8
+        state: link
+    - name: changer permission
+      file:
+        path: /opt/tomcat8/bin/startup.sh 
+        mode: '0755'
+    - name: changer permission
+      file:
+        path: /opt/tomcat8/bin/shutdown.sh
+        mode: '0755'
+    - name: creer lien symbolique
+      file:
+        src: /opt/tomcat8/bin/startup.sh
+        dest: /usr/local/bin/tomcatup
+        state: link
+    - name: creer lien symbolique
+      file:
+        src: /opt/tomcat8/bin/shutdown.sh
+        dest: /usr/local/bin/tomcatdown
+        state: link
+    - name: copier le fichier des utilisateurs tomcat
+      copy:
+        src: tomcat-users.xml
+        dest: /opt/tomcat8/conf/tomcat-users.xml
+    - name: edit context files
+      copy:
+        src: context.xml
+        dest: "{{item}}"
+      loop:
+      - /opt/tomcat8/webapps/host-manager/META-INF/context.xml
+      - /opt/tomcat8/webapps/manager/META-INF/context.xml
+    - name: Service tomcat
+      copy:
+        src: tomcat_service
+        dest: /etc/systemd/system/tomcat.service
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: tomcat runnug and enabled
+      systemd:
+        name: tomcat
+        state: restarted
+        enabled: yes
+        daemon_reload: yes
+

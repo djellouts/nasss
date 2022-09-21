@@ -1,0 +1,36 @@
+- hosts: ci
+  become: yes
+  tasks: 
+  - name: sonar user created
+    user:
+      name: sonar
+      create_home: no
+      shell: /bin/false
+      state: present 
+  - name: get sonarqube
+    unarchive:
+      src: http://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-7.9.6.zip
+      dest: /opt
+      owner: sonar
+      group: sonar
+      remote_src: yes
+  - name: rename sonar folder
+    file:
+      src: /opt/sonarqube-7.9.6
+      dest: /opt/sonarqube
+      state: link
+
+  - name: Service sonarqube
+    copy:
+      src: sonar_service
+      dest: /etc/systemd/system/sonarqube.service
+      owner: root
+      group: root
+      mode: "0644"
+
+  - name: sonar runnug and enabled
+    systemd:
+      name: sonarqube
+      state: started
+      enabled: yes
+      daemon_reload: yes

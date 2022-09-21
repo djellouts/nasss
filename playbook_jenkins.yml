@@ -1,0 +1,79 @@
+- hosts: ci
+  become: yes
+  tasks: 
+  - name: install utilities
+    yum:
+      name:
+      - wget
+      - unzip
+      - tree
+      - net-tools
+      - curl
+  - name: install git
+    include_tasks: git-task.yml
+  - name: install maven from role
+    include_role:
+      name: maven-role
+    vars:
+      maven_version: 3.8.6
+  - name: install jenkins on Redhat
+    block:
+    - name: install jenkins repo
+      yum_repository:
+        name: Jenkins
+        description: Jenkins Stable Repo
+        baseurl: https://pkg.jenkins.io/redhat-stable
+        gpgcheck: yes
+        enabled: yes
+        gpgkey: https://jenkins-ci.org/redhat/jenkins-ci.org.key
+    - rpm_key:
+        key: https://pkg.jenkins.io/redhat-stable/jenkins.io.key
+        state: present
+        validate_certs: no
+    - get_url:
+        url: http://pkg.jenkins.io/redhat-stable/jenkins.repo
+        dest: /etc/yum.repos.d/jenkins.repo
+        validate_certs: no
+    - name: jenkins installed 
+      yum:
+        name: jenkins 
+      when: ansible_os_family | lower == "redhat"
+    - name: jenkins running and enabled
+      systemd:
+        name: jenkins
+        state: started
+        enabled: yes
+    - name: sonar user created
+      user:
+        name: sonar
+        create_home: no
+        shell: /bin/false
+        state: present
+    - name: installer sonarqube
+      unarchive: 
+        src: https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-7.9.6.zip 
+        dest: /opt
+        remote_src: yes
+        owner: sonar
+        group: sonar
+    - name: creer lien symb sonar
+      file: 
+        src: /opt/sonarqube-7.9.6
+        dest: /opt/sonarqube
+        state: link
+    - name: Service sonarqube
+      copy: 
+        src: sonar_service
+        dest: /etc/systemd/system/sonarqube.service 
+    - name: sonar runnug and enabled
+      systemd:
+        name: sonarqube
+        state: started
+        enabled: yes
+  - name: docker installed and run
+    include_tasks: docker_tasks.yml
+  - name: add user jenkins to docker
+    user:
+      name: jenkins
+      group: docker
+      append: yes

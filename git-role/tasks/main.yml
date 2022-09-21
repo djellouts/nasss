@@ -1,0 +1,7 @@
+---
+# tasks file for git-role
+- name: installer git
+  yum:
+    name: git
+    state: latest
+    update_cache: yes

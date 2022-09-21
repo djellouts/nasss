@@ -1,0 +1,5 @@
+- hosts: dev
+  roles: 
+  - git-role
+  become: yes
+

@@ -1,0 +1,4 @@
+- task: installer java
+  yum:
+    name: java
+    state: latest  

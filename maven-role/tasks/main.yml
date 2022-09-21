@@ -1,0 +1,30 @@
+---
+# tasks file for maven-role
+- name: install java
+  include_tasks: java.yml
+
+# install maven
+- name: download maven archive
+  get_url:
+    url: http://apache.mirrors.ovh.net/ftp.apache.org/dist/maven/maven-{{maven_major_version}}/{{maven_version}}/binaries/apache-maven-{{maven_version}}-bin.tar.gz
+    dest: /opt
+- name: tar archive maven
+  unarchive:
+    src: /opt/apache-maven-{{maven_version}}-bin.tar.gz
+    dest: /opt
+    remote_src: yes
+
+- name: rename maven directory
+  #shell: mv /opt/apache-maven-3.6.3 /opt/maven
+  file:
+    src: /opt/apache-maven-{{maven_version}}
+    dest: /opt/maven
+    state: link
+
+- name: maven.sh
+  template:
+    src: templates/maven.sh.j2
+    dest: /etc/profile.d/maven.sh
+    mode: '755'
+- shell: . /etc/profile.d/maven.sh
+

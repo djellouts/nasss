@@ -1,0 +1,7 @@
+- hosts: dev
+  roles: 
+  - maven-role
+  vars: 
+    maven_version: "3.8.6"
+  become: yes
+

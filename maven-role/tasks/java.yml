@@ -1,0 +1,7 @@
+# install java
+- name: install jdk
+  yum:
+    name: java-11-openjdk
+    state: latest
+    update_cache: yes
+
